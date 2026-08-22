@@ -64,6 +64,9 @@ Configured in `/etc/sysctl.d/99-laptop-optimizations.conf`:
 ### 🎬 GPU Hardware Video Acceleration
 - Installed `intel-media-va-driver-non-free` for full Intel Iris Xe VA-API GPU decode/encode (H.264, HEVC, VP9) for cool, quiet 4K video playback.
 
+### 🔋 Dell Battery Health Protection (80% Limit)
+- Configured Dell BIOS battery charging thresholds via `smbios-battery-ctl` (starts charging at 70%, stops at 80%) to maximize lithium battery lifespan when working on AC power.
+
 ---
 
 ## 🔊 2. Quad-Speaker & Subwoofer / Bass Audio Fix

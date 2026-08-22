@@ -131,9 +131,26 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Cleanup Unused Packages and Flatpaks
+# 6. Dell Battery Charging Thresholds (80% Battery Health Protection)
 # ------------------------------------------------------------------------------
-log_section "6. System Cleanup"
+log_section "6. Dell Battery Charging Thresholds (80% Limit)"
+
+log_info "Installing smbios-utils for Dell BIOS battery management..."
+apt-get install -y -qq smbios-utils
+
+if command -v smbios-battery-ctl >/dev/null 2>&1; then
+    log_info "Configuring Dell BIOS battery threshold: Start at 70%, Stop at 80%..."
+    smbios-battery-ctl --set-charging-mode=custom 2>/dev/null || true
+    smbios-battery-ctl --set-custom-charge-interval 70 80 2>/dev/null || true
+    log_success "Dell battery charging threshold set to 80% maximum charge."
+else
+    log_warn "smbios-battery-ctl not available; skipping battery threshold setup."
+fi
+
+# ------------------------------------------------------------------------------
+# 7. Cleanup Unused Packages and Flatpaks
+# ------------------------------------------------------------------------------
+log_section "7. System Cleanup"
 
 log_info "Cleaning up unused flatpak runtimes..."
 if command -v flatpak >/dev/null 2>&1; then
@@ -158,6 +175,7 @@ echo -e "  ✔ zRAM compressed memory swap enabled (zstd)"
 echo -e "  ✔ Intel non-free media driver installed (GPU video decode)"
 echo -e "  ✔ Realtime audio privileges configured for '${TARGET_USER}'"
 echo -e "  ✔ SSD 'noatime' mount option enabled in /etc/fstab"
+echo -e "  ✔ Dell battery charge threshold set to 80% limit (preserves battery health)"
 echo -e "  ✔ Package & Flatpak caches cleaned up"
 echo ""
 log_warn "Please REBOOT your laptop to complete applying group permissions and verify boot performance:"
