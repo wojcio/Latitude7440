@@ -14,6 +14,7 @@ A comprehensive setup, hardware fix, performance optimization, and development e
 | **Storage** | 1 TB NVMe SSD (Encrypted LUKS + LVM, ext4) |
 | **Graphics** | Intel® Iris® Xe Graphics (Raptor Lake-P, i915 driver) |
 | **Audio Codec** | Realtek ALC289 Quad-Speaker Array (2 Tweeters + 2 Woofers) |
+| **Fingerprint Reader** | Broadcom BCM58200 ControlVault 3 (USB ID: `0a5c:5843`) |
 | **Webcam** | Intel® IPU6 (MIPI CSI Camera Stack) |
 | **Verified Kernel** | Linux 6.8.0-xx-generic LTS *(Do not upgrade to 7.0+)* |
 | **Target Workloads** | Python Engineering, Podman/Containers, Bitwig Studio (DAW), General Productivity |
@@ -33,8 +34,10 @@ A comprehensive setup, hardware fix, performance optimization, and development e
 ```text
 ├── optimize_laptop.sh                   # System performance, boot & kernel tuning script
 ├── fix_quad_audio.sh                    # ALSA ALC289 quad-speaker & woofer hardware fix script
+├── setup_fingerprint.sh                 # Broadcom ControlVault 3 fingerprint reader setup script
 ├── setup_dev_environment.sh             # Python (uv, ruff) & Rootless Podman dev environment script
 ├── dell_latitude_7440_optimal_preset.json # EasyEffects acoustic DSP tuning preset (MaxxAudio IRS + Bass EQ)
+├── packages/                            # Packaged drivers (libfprint-2-tod1-broadcom for Ubuntu 24.04 Noble)
 └── README.md                            # Complete documentation
 ```
 
@@ -129,7 +132,50 @@ Applied via [`setup_dev_environment.sh`](./setup_dev_environment.sh):
 
 ---
 
-## 🛠️ 4. Recommended CLI Tools
+## 🖐️ 4. Broadcom ControlVault 3 Fingerprint Reader Setup
+
+Applied via [`setup_fingerprint.sh`](./setup_fingerprint.sh):
+
+### 🔍 The Problem
+The Dell Latitude 7440 features a **Broadcom BCM58200 ControlVault 3** fingerprint reader (USB ID: `0a5c:5843`). Standard upstream `libfprint` does not include open-source drivers due to Broadcom's proprietary protocol. In Ubuntu 24.04 Noble / Linux Mint 22, the package `libfprint-2-tod1-broadcom` is not included in standard repositories because Canonical only pushed `libfprint-2-tod1-broadcom-cv3plus` (for newer CV3+ models). Furthermore, older packages depended on deprecated `libssl1.1` or `libssl3` instead of the new `libssl3t64`.
+
+### 🛠️ The Fix
+1. **Driver Packaging (`packages/libfprint-2-tod1-broadcom_...deb`):**
+   Compiled from Canonical's official Launchpad `ubuntu/noble` OEM source tree, linked against OpenSSL 3 (`libssl3t64`) and `libfprint-2-tod1`.
+2. **Udev & Firmware Setup:**
+   Deploys Broadcom firmware blobs into `/var/lib/fprint/fw/` and udev rules into `/usr/lib/udev/rules.d/60-libfprint-2-device-broadcom.rules`.
+3. **PAM Authentication:**
+   Enables biometric authentication in PAM (`pam-auth-update --enable fprintd`) for `sudo`, lock screen unlocking, and polkit dialogs.
+
+### 📝 Enrolling Your Fingerprint
+Run the setup script:
+```bash
+sudo ./setup_fingerprint.sh
+```
+
+Then enroll your finger as your normal user (do **not** use `sudo`):
+```bash
+fprintd-enroll
+# Or specify a finger:
+fprintd-enroll -f right-index-finger
+```
+Verify the enrolled finger:
+```bash
+fprintd-verify
+```
+
+Useful management commands:
+```bash
+# List enrolled fingers for your user
+fprintd-list "$USER"
+
+# Delete all enrolled fingers if you want to re-enroll
+fprintd-delete "$USER"
+```
+
+---
+
+## 🛠️ 5. Recommended CLI Tools
 
 Install modern productivity tools:
 ```bash
@@ -172,8 +218,8 @@ To replicate this exact configuration on a new or freshly installed Dell Latitud
 
 ```bash
 # 1. Clone this repository
-git clone <YOUR_REPO_URL>
-cd <YOUR_REPO_NAME>
+git clone https://github.com/wojcio/Latitude7440.git
+cd Latitude7440
 
 # 2. Run system performance optimizations
 sudo ./optimize_laptop.sh
@@ -181,14 +227,18 @@ sudo ./optimize_laptop.sh
 # 3. Run quad-speaker & bass audio hardware fix
 sudo ./fix_quad_audio.sh
 
-# 4. Install Python & Podman development suite
+# 4. Configure Broadcom fingerprint reader
+sudo ./setup_fingerprint.sh
+fprintd-enroll
+
+# 5. Install Python & Podman development suite
 sudo ./setup_dev_environment.sh
 
-# 5. Import EasyEffects DSP Acoustic Preset
+# 6. Import EasyEffects DSP Acoustic Preset
 mkdir -p ~/.config/easyeffects/output
 cp dell_latitude_7440_optimal_preset.json ~/.config/easyeffects/output/"Dell Latitude 7440 Optimal.json"
 
-# 6. Reboot to apply all hardware changes & user group permissions
+# 7. Reboot to apply all hardware changes & user group permissions
 sudo reboot
 ```
 
